@@ -21,10 +21,18 @@ async function main() {
     const StakingPool = await ethers.getContractFactory("StakingPool");
     const stakingPool = await StakingPool.deploy(
       apeToken.address,
-      "0xD84E94F8Fed1B49B3f18440E9817d1Fa86e21c78"
+      "0x81d03bF5e59F42B6088bDeAbEF82096578168fbd"
     );
     await stakingPool.deployed();
-    console.log("Staking Pool deployed to:", stakingPool.address);
+    console.log("StakingPool deployed to:", stakingPool.address);
+
+    const StakingPoolV2 = await ethers.getContractFactory("StakingPoolV2");
+    const stakingPoolV2 = await StakingPoolV2.deploy(
+      apeToken.address,
+      "0x81d03bF5e59F42B6088bDeAbEF82096578168fbd"
+    );
+    await stakingPoolV2.deployed();
+    console.log("StakingPoolV2 deployed to:", stakingPoolV2.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

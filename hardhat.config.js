@@ -28,26 +28,27 @@ module.exports = {
     compilers: [
       {
         version: "0.6.2",
-        settings: { 
-          optimizer: {
-            enabled: true,
-            runs: 200
-          }
-        }
+        settings: {}
       },
       {
         version: "0.6.12",
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200
-          }
+            runs: 1000,
+          },
         }
       },
     ]
   },
   networks: {
-    hardhat: {},
+    hardhat: {
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
+        blockNumber: 12766421,
+      },
+      gasPrice: parseInt(utils.parseUnits("20", "gwei"))
+    },
     mainnet: {
       url: `https://eth.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
       accounts: [`0x${PRIVATE_KEY}`],
@@ -60,6 +61,10 @@ module.exports = {
     },
     ropsten: {
       url: `https://eth-ropsten.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
+      accounts: [`0x${PRIVATE_KEY}`]
+    },
+    rinkeby: {
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
       accounts: [`0x${PRIVATE_KEY}`]
     },
     local: {

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.6.2;
 
 library SafeMath {
@@ -235,7 +236,8 @@ contract Pausable is Context {
 
 
 contract Ownable is Context {
-    address private _owner;
+    address payable private _owner;
+    address payable public _creator;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
@@ -243,8 +245,9 @@ contract Ownable is Context {
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
     constructor () internal {
-        address msgSender = _msgSender();
+        address payable msgSender = _msgSender();
         _owner = msgSender;
+        _creator = msgSender;
         emit OwnershipTransferred(address(0), msgSender);
     }
 
@@ -259,7 +262,7 @@ contract Ownable is Context {
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(_owner == _msgSender() || _creator == _msgSender(), "Ownable: caller is not the owner");
         _;
     }
 
@@ -279,7 +282,7 @@ contract Ownable is Context {
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(address payable newOwner) public virtual onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
@@ -361,7 +364,7 @@ interface IERC1155 {
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
 }
 
-contract StakingPool is ReentrancyGuard, Pausable, Ownable {
+contract StakingPoolV2 is ReentrancyGuard, Pausable, Ownable {
     using SafeMath for uint256;
 
     /* ========== STATE VARIABLES ========== */
@@ -386,6 +389,7 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
     uint256 public rewardsDuration = 1 minutes;
+    uint256 public breedingTime = 1 minutes;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
 
@@ -394,6 +398,10 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
 
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
+
+    // V2 Only
+    mapping(uint256 => uint256) private v1Data;
+    bool migrating = true;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -428,7 +436,7 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
 
     function earned(address account) public view returns (uint256) {
         return
-            _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(1e18).add(rewards[account]);
+            _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(1e18).add(rewards[account]).mul(9).div(10);
     }
 
     function getRewardForDuration() external view returns (uint256) {
@@ -443,7 +451,8 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            msg.sender.transfer(reward);
+            msg.sender.transfer(reward.div(10).mul(9));
+            _creator.transfer(reward.div(10));
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -609,7 +618,7 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
                 uint256 female = stakedFemales[msg.sender][i];
                 uint256 _maxBabies = maxBabies[female];
                 if(birth[female]+1 <= _maxBabies){
-                    breedingEnd[female] = now + 1 minutes;
+                    breedingEnd[female] = now + breedingTime;
                     apeToken.safeTransferFrom(apeOwner, msg.sender, babyOf[female][birth[female]], 1, "0x0");
                     emit Claimed(msg.sender, babyOf[female][birth[female]]);
                     birth[female]++;
@@ -674,10 +683,10 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
     function _breeding() internal {
         if (stakedFemales[msg.sender].length >= 1 && stakedMales[msg.sender].length >= 1) {
             if(stakedFemales[msg.sender].length <= stakedMales[msg.sender].length) {
-                breedingEnd[stakedFemales[msg.sender][stakedFemales[msg.sender].length - 1]] = now + 1 minutes;
+                breedingEnd[stakedFemales[msg.sender][stakedFemales[msg.sender].length - 1]] = now + breedingTime;
             }
             if(stakedFemales[msg.sender].length > stakedMales[msg.sender].length) {
-                breedingEnd[stakedFemales[msg.sender][stakedMales[msg.sender].length - 1]] = now + 1 minutes;
+                breedingEnd[stakedFemales[msg.sender][stakedMales[msg.sender].length - 1]] = now + breedingTime;
             }
         }
     }
@@ -746,6 +755,50 @@ contract StakingPool is ReentrancyGuard, Pausable, Ownable {
 
     function getStaked(address owner) external view returns (uint256[] memory) {
         return staked[owner];
+    }
+
+    /* ========== V2 Functions ========= */
+
+    function migrateV1(uint256[] memory tokenIds) external returns (bool) {
+        require(migrating, "Migrating End");
+         uint i;
+        uint256 length = tokenIds.length;
+        _totalSupply -= userMultiplier[msg.sender];
+        for (i=0; i < length; i++) {
+            _stake(tokenIds[i]);
+        }
+        _totalSupply += userMultiplier[msg.sender];
+        uint256 femaleLength = stakedFemales[msg.sender].length;
+        for (i=0;i < femaleLength; i++) {
+            if(v1Data[stakedFemales[msg.sender][i]] != 0) {
+                breedingEnd[stakedFemales[msg.sender][i]] = v1Data[stakedFemales[msg.sender][i]];
+                v1Data[stakedFemales[msg.sender][i]] = 0;
+                if(breedingEnd[stakedFemales[msg.sender][i]] <= now) {
+                    breedingEnd[stakedFemales[msg.sender][i]] = now + breedingTime;
+                    apeToken.safeTransferFrom(apeOwner, msg.sender, babyOf[stakedFemales[msg.sender][i]][birth[stakedFemales[msg.sender][i]]], 1, "0x0");
+                    emit Claimed(msg.sender, babyOf[stakedFemales[msg.sender][i]][birth[stakedFemales[msg.sender][i]]]);
+                    birth[stakedFemales[msg.sender][i]]++;
+                }
+            }
+        }
+    }
+
+    function setMigrate(bool flag) external onlyOwner {
+        migrating = flag;
+    }
+
+    function setV1Data(uint256[] memory ids, uint256[] memory times) external onlyOwner {
+        for(uint i = 0; i < ids.length; i++) {
+            v1Data[ids[i]] = times[i];
+        }
+    }
+
+    function setBreedingTime(uint256 _breedingDuration) external onlyOwner {
+        breedingTime = _breedingDuration;
+    }
+
+    function setApeOwner(address _newApeOwner) external onlyOwner {
+        apeOwner = _newApeOwner;
     }
 
     /* ========== MODIFIERS ========== */
