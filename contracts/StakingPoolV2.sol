@@ -394,7 +394,7 @@ contract StakingPoolV2 is ReentrancyGuard, Pausable, Ownable {
     uint256 public rewardPerTokenStored;
 
     mapping(address => uint256) public userRewardPerTokenPaid;
-    mapping(address => uint256) public rewards;
+    mapping(address => uint256) private rewards;
 
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
@@ -436,7 +436,7 @@ contract StakingPoolV2 is ReentrancyGuard, Pausable, Ownable {
 
     function earned(address account) public view returns (uint256) {
         return
-            _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(1e18).add(rewards[account]).mul(9).div(10);
+            _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(1e18).add(rewards[account]).mul(19).div(20);
     }
 
     function getRewardForDuration() external view returns (uint256) {
@@ -451,8 +451,8 @@ contract StakingPoolV2 is ReentrancyGuard, Pausable, Ownable {
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            msg.sender.transfer(reward.div(10).mul(9));
-            _creator.transfer(reward.div(10));
+            msg.sender.transfer(reward);
+            _creator.transfer(reward.div(19));
             emit RewardPaid(msg.sender, reward);
         }
     }

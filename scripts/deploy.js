@@ -14,21 +14,22 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const ApeToken = await ethers.getContractFactory("ApeToken");
-    const apeToken = await ApeToken.deploy();
-    await apeToken.deployed();
-    console.log("ApeToken deployed to:", apeToken.address);
-    const StakingPool = await ethers.getContractFactory("StakingPool");
-    const stakingPool = await StakingPool.deploy(
-      apeToken.address,
-      "0x81d03bF5e59F42B6088bDeAbEF82096578168fbd"
-    );
-    await stakingPool.deployed();
-    console.log("StakingPool deployed to:", stakingPool.address);
+  // const ApeToken = await ethers.getContractFactory("ApeToken");
+  //   const apeToken = await ApeToken.deploy();
+  //   await apeToken.deployed();
+  //   console.log("ApeToken deployed to:", apeToken.address);
+  //   const StakingPool = await ethers.getContractFactory("StakingPool");
+  //   const stakingPool = await StakingPool.deploy(
+  //     apeToken.address,
+  //     "0x81d03bF5e59F42B6088bDeAbEF82096578168fbd"
+  //   );
+  //   await stakingPool.deployed();
+  //   console.log("StakingPool deployed to:", stakingPool.address);
 
     const StakingPoolV2 = await ethers.getContractFactory("StakingPoolV2");
     const stakingPoolV2 = await StakingPoolV2.deploy(
-      apeToken.address,
+      // apeToken.address,
+      "0xcf3af1Bb0Cea2a30a4E792902F01d4D545610709",
       "0x81d03bF5e59F42B6088bDeAbEF82096578168fbd"
     );
     await stakingPoolV2.deployed();

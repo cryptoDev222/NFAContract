@@ -47,7 +47,7 @@ module.exports = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
         blockNumber: 12766421,
       },
-      gasPrice: parseInt(utils.parseUnits("20", "gwei"))
+      gasPrice: parseInt(utils.parseUnits("0.1", "gwei"))
     },
     mainnet: {
       url: `https://eth.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
